@@ -101,39 +101,60 @@ st.title("💡가정용 에너지 + 체감온도 정보")
 
 
 # 한국 기상청 체감온도 API 연결
+import streamlit as st
+import requests
+import xml.etree.ElementTree as ET
+
+st.title("💡가정용 에너지 + 체감온도 정보")
+
+# ------------------------------------------------------------------------------
+# 1️⃣한국 기상청 생활지수 API 연결
 # ------------------------------------------------------------------------------
 API_KEY_KMA = "<너의_기상청_api_key>"
 
-# 예시로 서울(60, 127)의 현재 체감온도 가져오기
-# nx, ny는 국가격자
-nx = 60
-ny = 127
+# API 정보
+areaNo = "1100000000"  # 서울
+time = "2021070618"    # base time
+pageNo = 1
+numOfRows = 10
+dataType = "XML"
 
-API_URL_KMA = f"http://apis.data.go.kr/1360000/WthrWrnInfoService/getUltrvDisComfortIndex?serviceKey={API_KEY_KMA}&numOfRows=10&pageNo=1&baseDate=20240617&baseTime=0600&nx={nx}&ny={ny}"
+API_URL_KMA = f"https://apihub.kma.go.kr/api/typ02/openApi/LivingWthrIdxServiceV3/getSenTaIdxV3?numOfRows={numOfRows}&pageNo={pageNo}&dataType={dataType}&areaNo={areaNo}&time={time}&requestCode=A41&authKey={API_KEY_KMA}"
 
 # API 요청
 resp = requests.get(API_URL_KMA)
-resp_json = resp.json()
-
-# 체감온도 정보 파싱
-items = resp_json['response']['body']['items']['item']
-
-# 보통 이 배열의 첫 번째로 현재 체감온도가 있음
-current_feeltemp = float(items[0].get("disComfortIndex", 0))
-
-st.write(f"✅ 현재 체감온도: {current_feeltemp}℃")
+resp.raise_for_status()
 
 # ------------------------------------------------------------------------------
-# 3️⃣에너지 사용 권고
+# 2️⃣ XML 파서로 체감온도 파싱
 # ------------------------------------------------------------------------------
-if current_feeltemp >= 30:
-    st.error("🔥 체감온도가 아주 높은 상태이에요!")
-    st.write("✅ 에어컨 세기를 줄이는 것보다 실내온도의 26°C를 유지해주세요.")
-    st.write("✅ 실내에서 선풍기도 함께 사용할 수 있습니다.")
-elif current_feeltemp < 10:
-    st.error("❄ 체감온도가 아주 낮아요.")
-    st.write("✅ 실내 난방을 20°C로 맞추고, 웃옷이나 이불로 체온을 보호해주세요.")
+root = ET.fromstring(resp.text)
+
+current_feeltemp = None
+
+for item in root.iter("item"):
+    idx = item.find("sensationIdx").text
+    if idx is not None:
+        current_feeltemp = float(idx)
+        break
+
+if current_feeltemp is not None:
+    st.write(f"✅ 현재 체감온도: {current_feeltemp}℃")
+
+    # ------------------------------------------------------------------------------
+    # 3️⃣에너지 사용 권고
+    # ------------------------------------------------------------------------------
+    if current_feeltemp >= 30:
+        st.error("🔥 체감온도가 아주 높은 상태이에요.")
+        st.write("✅ 에어컨 세기를 줄이는 것보다 실내온도의 26°C를 유지해주세요.")
+        st.write("✅ 실내에서 선풍기도 함께 사용할 수 있습니다.")
+    elif current_feeltemp < 10:
+        st.error("❄ 체감온도가 아주 낮아요.")
+        st.write("✅ 실내 난방을 20°C로 맞추고, 웃옷이나 이불로 체온을 보호해주세요.")
+    else:
+        st.success("✨ 체감온도가 쾌적합니다.")
+        st.write("✅ 실내 온도는 22°C~24°C로 유지해주세요.")
+        st.write("✅ 에너지 낭비가 없습니다.")
 else:
-    st.success("✨ 체감온도가 쾌적합니다.")
-    st.write("✅ 실내 온도는 22°C~24°C로 유지해주세요.")
-    st.write("✅ 에너지 낭비가 없습니다.")
+    st.error("⚡ 현재 체감온도 데이터를 가져올 수 없습니다.")
+    st.write("✅ API키, areaNo, time 등을 확인해주세요.")
