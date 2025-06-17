@@ -111,7 +111,7 @@ API_URL = 'https://apis.data.go.kr/5020000/pohangArpltnEnvrn'
 # API 파리메터
 params = {
     "serviceKey": API_KEY,
-    "returnType": "xml",
+    "returnType": "json",
     "numOfRows": 10,
     "pageNo": 1,
     "sidoName": "경상북도",
