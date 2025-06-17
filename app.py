@@ -149,6 +149,3 @@ if response.status_code == 200:
 
 else:
     st.error("API 요청 중 오류가 발생되었습니다.")
-import certifi
-
-response = requests.get(API_URL, params=params, verify=certifi.where())
