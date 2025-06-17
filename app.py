@@ -94,147 +94,46 @@ else:
 
 import streamlit as st
 import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
-from datetime import datetime, timedelta
 
-# --- API 설정 ---
-# 한국환경공단 탄소중립포인트 에너지 사용량 정보 API의 서비스 URL
-# 이 URL은 예시입니다. 반드시 데이터 포털에서 정확한 URL을 확인해서 변경해야 합니다!
-# (예: https://www.data.go.kr/data/15082728/openapi.do 페이지에서 '활용가이드'나 'API 호출' 예시 확인)
-API_BASE_URL = "http://apis.data.go.kr/B553123/CarbonPointService/getEnergyUsageList"
-
-# --- 한글 폰트 설정 (선택 사항: 그래프에 한글이 깨질 때) ---
-# 로컬에서 테스트할 때 시스템 폰트를 사용합니다.
-# Streamlit Cloud에 배포할 때는 한글 폰트가 없을 수 있으므로,
-# 해당 폰트 설정 부분을 제거하거나 Streamlit Cloud용 폰트 설정을 참고하세요.
-try:
-    # 맑은 고딕 (Windows), AppleGothic (Mac) 등 본인 OS에 맞는 폰트 설정
-    plt.rcParams['font.family'] = 'Malgun Gothic'
-    plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
-except:
-    st.warning("한글 폰트 설정에 실패했습니다. 그래프에 한글이 깨져 보일 수 있습니다.")
+st.title("💡가정용 에너지 + 체감온도 정보")
 
 
-# --- API 데이터 가져오기 함수 ---
-@st.cache_data(ttl=3600) # 1시간 동안 데이터를 캐싱하여 불필요한 API 호출 방지
-def get_energy_data(api_key, start_date, end_date):
-    params = {
-        "serviceKey": api_key,
-        "startDate": start_date,
-        "endDate": end_date,
-        "pageNo": 1,
-        "numOfRows": 100, # 가져올 데이터 개수 (API 제한에 따라 조절)
-        "_type": "json"   # JSON 형식으로 응답 요청
-    }
-    
-    try:
-        response = requests.get(API_BASE_URL, params=params, timeout=10)
-        response.raise_for_status() # HTTP 오류가 발생하면 예외 발생
 
-        data = response.json()
-        
-        # API 응답 구조에 따라 데이터 추출 방식이 달라집니다.
-        # 한국환경공단 API는 보통 response -> body -> items -> item 경로에 실제 데이터가 있습니다.
-        if 'response' in data and 'body' in data['response'] and \
-           'items' in data['response']['body'] and data['response']['body']['items']:
-            
-            items = data['response']['body']['items']['item']
-            
-            # API 응답이 단일 항목일 경우 리스트로 감싸기 (pandas DataFrame 변환을 위해)
-            if not isinstance(items, list):
-                items = [items]
 
-            df = pd.DataFrame(items)
-            
-            # 필요한 컬럼만 선택하고, 날짜 및 숫자 형식으로 변환 (컬럼명은 API 문서 확인)
-            # 예시: 'registDt' (등록일자), 'electUseQty' (전기 사용량)
-            # 실제 API 응답 컬럼명으로 변경해야 합니다.
-            if 'registDt' in df.columns:
-                df['registDt'] = pd.to_datetime(df['registDt'], format='%Y%m%d', errors='coerce')
-                df = df.dropna(subset=['registDt']) # 날짜 변환 실패 행 제거
+# 한국 기상청 체감온도 API 연결
+# ------------------------------------------------------------------------------
+API_KEY_KMA = "<너의_기상청_api_key>"
 
-            if 'electUseQty' in df.columns:
-                df['electUseQty'] = pd.to_numeric(df['electUseQty'], errors='coerce')
-                df = df.dropna(subset=['electUseQty']) # 숫자 변환 실패 행 제거
+# 예시로 서울(60, 127)의 현재 체감온도 가져오기
+# nx, ny는 국가격자
+nx = 60
+ny = 127
 
-            return df.copy() # 원본 데이터프레임 복사본 반환
-        
-        elif 'response' in data and 'header' in data['response'] and data['response']['header']['resultCode'] != '00':
-            st.warning(f"API 응답 오류: {data['response']['header']['resultMsg']} (코드: {data['response']['header']['resultCode']})")
-            return pd.DataFrame() # 빈 데이터프레임 반환
-        else:
-            st.warning("API 응답에 데이터가 없거나 예상치 못한 형식입니다.")
-            st.json(data) # 디버깅을 위해 원본 응답 출력
-            return pd.DataFrame()
+API_URL_KMA = f"http://apis.data.go.kr/1360000/WthrWrnInfoService/getUltrvDisComfortIndex?serviceKey={API_KEY_KMA}&numOfRows=10&pageNo=1&baseDate=20240617&baseTime=0600&nx={nx}&ny={ny}"
 
-    except requests.exceptions.RequestException as e:
-        st.error(f"API 요청 중 오류 발생: {e}")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"데이터 처리 중 예상치 못한 오류 발생: {e}")
-        return pd.DataFrame()
+# API 요청
+resp = requests.get(API_URL_KMA)
+resp_json = resp.json()
 
-# --- Streamlit 앱 메인 UI ---
-st.title("💡 탄소중립포인트 에너지 사용량 정보")
-st.markdown("한국환경공단 API를 통해 에너지 사용량 데이터를 조회합니다.")
+# 체감온도 정보 파싱
+items = resp_json['response']['body']['items']['item']
 
-# 사이드바에서 API 키 가져오기
-try:
-    API_KEY = st.secrets["carbon_point_api_key"]
-except KeyError:
-    st.error("`secrets.toml` 파일에 API 키가 설정되지 않았습니다. `.streamlit/secrets.toml`을 확인해주세요.")
-    st.stop() # 키 없으면 앱 중단
+# 보통 이 배열의 첫 번째로 현재 체감온도가 있음
+current_feeltemp = float(items[0].get("disComfortIndex", 0))
 
-# 날짜 선택 위젯
-today = datetime.now().date()
-default_start_date = today - timedelta(days=365) # 기본 1년치 데이터
+st.write(f"✅ 현재 체감온도: {current_feeltemp}℃")
 
-start_date_input = st.date_input("시작일", value=default_start_date)
-end_date_input = st.date_input("종료일", value=today)
-
-# '데이터 조회' 버튼
-if st.button("데이터 조회"):
-    # 날짜 유효성 검사
-    if start_date_input > end_date_input:
-        st.error("시작일은 종료일보다 이전 날짜여야 합니다.")
-    else:
-        # 날짜를 YYYYMMDD 형식 문자열로 변환
-        start_date_str = start_date_input.strftime("%Y%m%d")
-        end_date_str = end_date_input.strftime("%Y%m%d")
-
-        with st.spinner("데이터를 불러오는 중..."):
-            df_energy = get_energy_data(API_KEY, start_date_str, end_date_str)
-
-        if not df_energy.empty:
-            st.success(f"총 {len(df_energy)}건의 데이터를 불러왔습니다.")
-            
-            st.subheader("데이터 미리보기")
-            st.dataframe(df_energy.head()) # 데이터프레임 상단 5행 표시
-
-            # 그래프 그리기 (예시: 날짜별 전기 사용량)
-            # 실제 컬럼명에 따라 'registDt'와 'electUseQty'를 변경해야 합니다.
-            if 'registDt' in df_energy.columns and 'electUseQty' in df_energy.columns:
-                st.subheader("월별 전기 사용량 추이")
-                
-                # 월별로 집계
-                df_energy['year_month'] = df_energy['registDt'].dt.to_period('M').astype(str)
-                monthly_usage = df_energy.groupby('year_month')['electUseQty'].sum().reset_index()
-
-                fig, ax = plt.subplots(figsize=(10, 5))
-                ax.bar(monthly_usage['year_month'], monthly_usage['electUseQty'], color='lightgreen')
-                ax.set_xlabel("년월")
-                ax.set_ylabel("전기 사용량 (kWh)")
-                ax.set_title("월별 전기 사용량")
-                plt.xticks(rotation=45, ha='right')
-                plt.tight_layout()
-                st.pyplot(fig)
-            else:
-                st.info("그래프를 그릴 수 있는 'registDt' 또는 'electUseQty' 컬럼이 없습니다. API 응답의 컬럼명을 확인해주세요.")
-                st.json(df_energy.columns.tolist()) # 현재 데이터프레임의 컬럼 목록 출력
-        else:
-            st.warning("데이터를 가져오지 못했거나 조회된 데이터가 없습니다.")
-
+# ------------------------------------------------------------------------------
+# 3️⃣에너지 사용 권고
+# ------------------------------------------------------------------------------
+if current_feeltemp >= 30:
+    st.error("🔥 체감온도가 아주 높은 상태이에요!")
+    st.write("✅ 에어컨 세기를 줄이는 것보다 실내온도의 26°C를 유지해주세요.")
+    st.write("✅ 실내에서 선풍기도 함께 사용할 수 있습니다.")
+elif current_feeltemp < 10:
+    st.error("❄ 체감온도가 아주 낮아요.")
+    st.write("✅ 실내 난방을 20°C로 맞추고, 웃옷이나 이불로 체온을 보호해주세요.")
 else:
-    st.info("시작일과 종료일을 선택하고 '데이터 조회' 버튼을 눌러주세요.")
+    st.success("✨ 체감온도가 쾌적합니다.")
+    st.write("✅ 실내 온도는 22°C~24°C로 유지해주세요.")
+    st.write("✅ 에너지 낭비가 없습니다.")
