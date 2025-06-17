@@ -151,3 +151,27 @@ if response.status_code == 200:
 else:
     st.error("API 요청 중 오류가 발생되었습니다.")
 
+import requests
+
+# API 정보
+API_KEY = st.secrets['secret_key']
+url = "http://api.data.go.kr/openapi/service/FoodSanitationInformation/FoodGeneralInfo"
+
+# 쿼리 파리메터
+params = {
+    "ServiceKey": api_key,
+    "pageNo": 1,
+    "numOfRows": 10,
+    "returnType": "json"
+}
+
+# API 요청
+response = requests.get(url, params=params)
+
+if response.status_code == 200:
+    data = response.json()
+    print("API 데이터:")
+    print(data)
+else:
+    print("API 오류!", response.text)
+
