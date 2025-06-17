@@ -103,7 +103,7 @@ import xml.etree.ElementTree as ET
 st.title("🌫️ 현재 대기오염 정보 - 포항시")
 
 # API키 (너의 API키를 이곳에 넣어줘)
-API_KEY = "<너의_API_KEY>"
+API_KEY = st.secrets['secret_key']
 
 # API 정보
 API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
