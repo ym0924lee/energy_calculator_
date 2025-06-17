@@ -92,10 +92,6 @@ elif device == "TV":
 else:
     st.info("✅ 사용 후 전원을 끄고, 대기 전력을 줄이면 환경과 전기요금 모두 아낄 수 있어요.")
 
-import streamlit as st
-import requests
-
-st.title("💡가정용 에너지 + 체감온도 정보")
 
 
 
