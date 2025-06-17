@@ -95,6 +95,7 @@ else:
 
 
 
+----
 import streamlit as st
 import requests
 
@@ -102,7 +103,7 @@ import requests
 st.title("🌫️ 현재 대기오염 정보 - 포항시")
 
 # API키 (너의 API키를 이곳에 넣어줘)
-API_KEY = "<너의_API_KEY>"
+API_KEY = "secret_key"
 
 # API 정보
 API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
