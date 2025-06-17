@@ -97,6 +97,9 @@ else:
 
 import streamlit as st
 import requests
+import certifi
+
+response = requests.get(API_URL, params=params, verify=certifi.where())
 
 # Streamlit 제목
 st.title("🌫️ 현재 대기오염 정보 - 포항시")
