@@ -95,15 +95,15 @@ else:
 
 
 
-----
 import streamlit as st
 import requests
+import xml.etree.ElementTree as ET
 
 # Streamlit 제목
 st.title("🌫️ 현재 대기오염 정보 - 포항시")
 
 # API키 (너의 API키를 이곳에 넣어줘)
-API_KEY = "secret_key"
+API_KEY = "<너의_API_KEY>"
 
 # API 정보
 API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
@@ -111,7 +111,7 @@ API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
 # API 파리메터
 params = {
     "serviceKey": API_KEY,
-    "returnType": "json",
+    "returnType": "xml",
     "numOfRows": 10,
     "pageNo": 1,
     "sidoName": "경상북도",
@@ -122,20 +122,22 @@ params = {
 response = requests.get(API_URL, params=params)
 
 if response.status_code == 200:
-    response_json = response.json()
-    items = response_json.get("response", {}).get("body", {}).get("items", [])
+    # XML 파서로 파싱
+    root = ET.fromstring(response.content)
+    items = root.findall('.//item')
+
     if not items:
         st.error("데이터가 없습니다.")
     else:
         st.success("데이터를 가져왔습니다.")
         for item in items:
-            station_name = item.get("stationName")
-            pm10 = item.get("pm10Value")
-            pm25 = item.get("pm25Value")
-            o3 = item.get("o3Value")
-            no2 = item.get("no2Value")
-            co = item.get("coValue")
-            so2 = item.get("so2Value")
+            station_name = item.findtext("stationName")
+            pm10 = item.findtext("pm10Value")
+            pm25 = item.findtext("pm25Value")
+            o3 = item.findtext("o3Value")
+            no2 = item.findtext("no2Value")
+            co = item.findtext("coValue")
+            so2 = item.findtext("so2Value")
 
             st.write(f"**측정소**: {station_name}")
             st.write(f"- 미세먼지(PM10): {pm10} ㎍/㎥")
