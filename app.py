@@ -100,61 +100,60 @@ st.title("💡가정용 에너지 + 체감온도 정보")
 
 
 
-# 한국 기상청 체감온도 API 연결
 import streamlit as st
 import requests
 import xml.etree.ElementTree as ET
 
-st.title("💡가정용 에너지 + 체감온도 정보")
+# Streamlit 제목
+st.title("🌫️ 포항시 대기오염 정보")
 
-# ------------------------------------------------------------------------------
-# 1️⃣한국 기상청 생활지수 API 연결
-# ------------------------------------------------------------------------------
-API_KEY_KMA = "<너의_기상청_api_key>"
+# API키 입력
+API_KEY = st.text_input("API키를 입력해주세요.", type='password')
 
 # API 정보
-areaNo = "1100000000"  # 서울
-time = "2021070618"    # base time
-pageNo = 1
-numOfRows = 10
-dataType = "XML"
+API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
 
-API_URL_KMA = f"https://apihub.kma.go.kr/api/typ02/openApi/LivingWthrIdxServiceV3/getSenTaIdxV3?numOfRows={numOfRows}&pageNo={pageNo}&dataType={dataType}&areaNo={areaNo}&time={time}&requestCode=A41&authKey={API_KEY_KMA}"
+# API 파리메터
+params = {
+    "serviceKey": API_KEY,
+    "returnType": "xml",
+    "numOfRows": 10,
+    "pageNo": 1,
+    "sidoName": "경상북도",
+    "stationName": "포항시",
+}
 
-# API 요청
-resp = requests.get(API_URL_KMA)
-resp.raise_for_status()
+# 버튼 클릭시 API 요청
+if st.button("대기오염 정보 가져오기"):
+    response = requests.get(API_URL, params=params)
 
-# ------------------------------------------------------------------------------
-# 2️⃣ XML 파서로 체감온도 파싱
-# ------------------------------------------------------------------------------
-root = ET.fromstring(resp.text)
+    if response.status_code == 200:
+        # XML 파서로 파싱
+        root = ET.fromstring(response.content)
+        items = root.findall('.//item')
 
-current_feeltemp = None
+        if not items:
+            st.error("데이터가 없습니다.")
+        else:
+            st.success("데이터를 가져왔습니다.")
+            for item in items:
+                station_name = item.findtext("stationName")
+                pm10 = item.findtext("pm10Value")
+                pm25 = item.findtext("pm25Value")
+                o3 = item.findtext("o3Value")
+                no2 = item.findtext("no2Value")
+                co = item.findtext("coValue")
+                so2 = item.findtext("so2Value")
 
-for item in root.iter("item"):
-    idx = item.find("sensationIdx").text
-    if idx is not None:
-        current_feeltemp = float(idx)
-        break
+                st.write(f"**측정소**: {station_name}")
+                st.write(f"- 미세먼지(PM10): {pm10} ㎍/㎥")
+                st.write(f"- 초미세먼지(PM2.5): {pm25} ㎍/㎥")
+                st.write(f"- 오존 (O₃): {o3} ppm")
+                st.write(f"- 이산화질소 (NO₂): {no2} ppm")
+                st.write(f"- 일산화탄소 (CO): {co} ppm")
+                st.write(f"- 아황산가스 ( SO₂): {so2} ppm")
+                st.write("-------------------------")
 
-if current_feeltemp is not None:
-    st.write(f"✅ 현재 체감온도: {current_feeltemp}℃")
-
-    # ------------------------------------------------------------------------------
-    # 3️⃣에너지 사용 권고
-    # ------------------------------------------------------------------------------
-    if current_feeltemp >= 30:
-        st.error("🔥 체감온도가 아주 높은 상태이에요.")
-        st.write("✅ 에어컨 세기를 줄이는 것보다 실내온도의 26°C를 유지해주세요.")
-        st.write("✅ 실내에서 선풍기도 함께 사용할 수 있습니다.")
-    elif current_feeltemp < 10:
-        st.error("❄ 체감온도가 아주 낮아요.")
-        st.write("✅ 실내 난방을 20°C로 맞추고, 웃옷이나 이불로 체온을 보호해주세요.")
     else:
-        st.success("✨ 체감온도가 쾌적합니다.")
-        st.write("✅ 실내 온도는 22°C~24°C로 유지해주세요.")
-        st.write("✅ 에너지 낭비가 없습니다.")
-else:
-    st.error("⚡ 현재 체감온도 데이터를 가져올 수 없습니다.")
-    st.write("✅ API키, areaNo, time 등을 확인해주세요.")
+        st.error("API 요청 중 오류가 발생되었습니다.")
+
