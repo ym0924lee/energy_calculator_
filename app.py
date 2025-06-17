@@ -99,16 +99,15 @@ st.title("💡가정용 에너지 + 체감온도 정보")
 
 
 
-
 import streamlit as st
 import requests
 import xml.etree.ElementTree as ET
 
 # Streamlit 제목
-st.title("🌫️ 포항시 대기오염 정보")
+st.title("🌫️ 현재 대기오염 정보")
 
-# API키 입력
-API_KEY = st.text_input("API키를 입력해주세요.", type='password')
+# API키 (너의 API키를 이곳에 넣어줘)
+API_KEY = "<너의_API_KEY>"
 
 # API 정보
 API_URL = "http://apis.data.go.kr/B552584/ArpltnInforInrsvc/getAirPollutionInfo"
@@ -123,37 +122,36 @@ params = {
     "stationName": "포항시",
 }
 
-# 버튼 클릭시 API 요청
-if st.button("대기오염 정보 가져오기"):
-    response = requests.get(API_URL, params=params)
+# API 요청
+response = requests.get(API_URL, params=params)
 
-    if response.status_code == 200:
-        # XML 파서로 파싱
-        root = ET.fromstring(response.content)
-        items = root.findall('.//item')
+if response.status_code == 200:
+    # XML 파서로 파싱
+    root = ET.fromstring(response.content)
+    items = root.findall('.//item')
 
-        if not items:
-            st.error("데이터가 없습니다.")
-        else:
-            st.success("데이터를 가져왔습니다.")
-            for item in items:
-                station_name = item.findtext("stationName")
-                pm10 = item.findtext("pm10Value")
-                pm25 = item.findtext("pm25Value")
-                o3 = item.findtext("o3Value")
-                no2 = item.findtext("no2Value")
-                co = item.findtext("coValue")
-                so2 = item.findtext("so2Value")
-
-                st.write(f"**측정소**: {station_name}")
-                st.write(f"- 미세먼지(PM10): {pm10} ㎍/㎥")
-                st.write(f"- 초미세먼지(PM2.5): {pm25} ㎍/㎥")
-                st.write(f"- 오존 (O₃): {o3} ppm")
-                st.write(f"- 이산화질소 (NO₂): {no2} ppm")
-                st.write(f"- 일산화탄소 (CO): {co} ppm")
-                st.write(f"- 아황산가스 ( SO₂): {so2} ppm")
-                st.write("-------------------------")
-
+    if not items:
+        st.error("데이터가 없습니다.")
     else:
-        st.error("API 요청 중 오류가 발생되었습니다.")
+        st.success("데이터를 가져왔습니다.")
+        for item in items:
+            station_name = item.findtext("stationName")
+            pm10 = item.findtext("pm10Value")
+            pm25 = item.findtext("pm25Value")
+            o3 = item.findtext("o3Value")
+            no2 = item.findtext("no2Value")
+            co = item.findtext("coValue")
+            so2 = item.findtext("so2Value")
+
+            st.write(f"**측정소**: {station_name}")
+            st.write(f"- 미세먼지(PM10): {pm10} ㎍/㎥")
+            st.write(f"- 초미세먼지(PM2.5): {pm25} ㎍/㎥")
+            st.write(f"- 오존 (O₃): {o3} ppm")
+            st.write(f"- 이산화질소 (NO₂): {no2} ppm")
+            st.write(f"- 일산화탄소 (CO): {co} ppm")
+            st.write(f"- 아황산가스 ( SO₂): {so2} ppm")
+            st.write("-------------------------")
+
+else:
+    st.error("API 요청 중 오류가 발생되었습니다.")
 
