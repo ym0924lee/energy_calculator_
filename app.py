@@ -106,7 +106,7 @@ st.title("🌫️ 현재 대기오염 정보 - 포항시")
 API_KEY = st.secrets['secret_key']
 
 # API 정보
-API_URL = 'https://apis.data.go.kr/5020000/pohangArpltnEnvrn'
+API_URL = 'https://apis.data.go.kr/B552584/ArpltnInforInrsvc/getMsrstnAcctoRltmMesureDnsty'
 
 # API 파리메터
 params = {
