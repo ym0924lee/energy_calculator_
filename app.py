@@ -97,9 +97,7 @@ else:
 
 import streamlit as st
 import requests
-import certifi
 
-response = requests.get(API_URL, params=params, verify=certifi.where())
 
 # Streamlit 제목
 st.title("🌫️ 현재 대기오염 정보 - 포항시")
@@ -151,3 +149,6 @@ if response.status_code == 200:
 
 else:
     st.error("API 요청 중 오류가 발생되었습니다.")
+import certifi
+
+response = requests.get(API_URL, params=params, verify=certifi.where())
